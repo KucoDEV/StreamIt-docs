@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: add.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: add.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Provides utility functions for formatting and displaying JSON data,
+ * as well as updating UI elements based on user input.
+ *
+ * This module includes functions to apply syntax highlighting to JSON strings,
+ * extract and clean the inner content of a JSON object, and dynamically toggle
+ * the visibility of form fields depending on the selected media type.
+ *
+ * @module add
+ */
+
+const typeSelect = document.getElementById("type-add");
+const filmFields = document.getElementById("filmFields-add");
+const seriesFields = document.getElementById("seriesFields-add");
+const seasonsInput = document.getElementById("seasons-add");
+const episodesContainer = document.getElementById("episodesContainer-add");
+
+/**
+ * Applies syntax highlighting to a JSON string or object.
+ *
+ * This function takes a JSON object or string, escapes HTML-sensitive characters,
+ * and wraps values (keys, strings, numbers, booleans, null) in &lt;span> elements
+ * with specific CSS classes for visual syntax highlighting. This is typically used
+ * to display JSON data in a readable and styled format within HTML.
+ *
+ * @function
+ * @param {string|Object} json - The JSON string or object to highlight. If an object is provided, it is stringified using `JSON.stringify`.
+ * @returns {string} The highlighted HTML string representing the formatted JSON.
+ */
+
+function syntaxHighlight(json) {
+    if (typeof json != "string") {
+        json = JSON.stringify(json, null, 2);
+    }
+    json = json
+        .replace(/&amp;/g, "&amp;amp;")
+        .replace(/&lt;/g, "&amp;lt;")
+        .replace(/>/g, "&amp;gt;");
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = "token-number";
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = "token-key";
+            } else {
+                cls = "token-string";
+            }
+        } else if (/true|false/.test(match)) {
+            cls = "token-boolean";
+        } else if (/null/.test(match)) {
+            cls = "token-null";
+        }
+        return `&lt;span class="${cls}">${match}&lt;/span>`;
+    });
+}
+
+/**
+ * Extracts the inner JSON content from an object, removing the outer braces and base indentation.
+ *
+ * Converts the given object into a pretty-printed JSON string, then strips the first and last lines
+ * (which contain the opening and closing braces) and removes the leading indentation from each remaining line.
+ * This is useful for embedding only the core content of an object in another context without the outer structure.
+ *
+ * @function
+ * @param {Object} obj - The object to convert and extract from.
+ * @returns {string} A formatted string representing the inner JSON content (without outer braces or base indentation).
+ */
+function getInnerJsonString(obj) {
+    let json = JSON.stringify(obj, null, 2);
+    let lines = json.split("\n");
+    if (lines.length > 2) {
+        lines = lines.slice(1, -1);
+        lines = lines.map((line) => line.replace(/^ {2}/, ""));
+    }
+    return lines.join("\n");
+}
+
+/**
+ * Updates the visibility of input fields based on the selected media type.
+ *
+ * Displays the film-related fields if "film" is selected, the series-related fields if "serie" is selected,
+ * and hides both if no valid type is selected.
+ *
+ * @function
+ */
+function updateFields() {
+    if (typeSelect.value === "film") {
+        filmFields.style.display = "block";
+        seriesFields.style.display = "none";
+    } else if (typeSelect.value === "serie") {
+        filmFields.style.display = "none";
+        seriesFields.style.display = "block";
+    } else {
+        filmFields.style.display = "none";
+        seriesFields.style.display = "none";
+    }
+}
+
+typeSelect.addEventListener("change", updateFields);
+updateFields();
+
+seasonsInput &amp;&amp; seasonsInput.addEventListener("input", function () {
+    episodesContainer.innerHTML = "";
+    const nbSeasons = parseInt(seasonsInput.value, 10);
+    if (isNaN(nbSeasons) || nbSeasons &lt; 1) return;
+    for (let s = 1; s &lt;= nbSeasons; s++) {
+        const seasonDiv = document.createElement("div");
+        seasonDiv.className = "season-block-add";
+        seasonDiv.innerHTML = `
+            &lt;h4>Saison ${s}&lt;/h4>
+            &lt;label>Nombre d'épisodes :&lt;/label>
+            &lt;input type="number" min="1" class="episodesCount-add" data-season="${s}" />&lt;br />&lt;br />
+            &lt;div class="add-episodesFields" id="add-episodesFields${s}">&lt;/div>
+          `;
+        episodesContainer.appendChild(seasonDiv);
+    }
+
+    document.querySelectorAll(".episodesCount-add").forEach((input) => {
+        input.addEventListener("input", function () {
+            const seasonNum = parseInt(this.getAttribute("data-season"), 10);
+            if (isNaN(seasonNum) || seasonNum &lt; 1) return;
+            const count = parseInt(this.value, 10);
+            const fieldsDiv = document.getElementById(`add-episodesFields${seasonNum}`);
+            fieldsDiv.innerHTML = "";
+            if (isNaN(count) || count &lt; 1) return;
+            for (let e = 1; e &lt;= count; e++) {
+                const episodeLabel = document.createElement("label");
+                episodeLabel.textContent = `Titre épisode ${e} :`;
+                fieldsDiv.appendChild(episodeLabel);
+
+                const episodeTitleInput = document.createElement("input");
+                episodeTitleInput.type = "text";
+                episodeTitleInput.name = `season${seasonNum}_episode${e}_title`;
+                episodeTitleInput.required = true;
+                fieldsDiv.appendChild(episodeTitleInput);
+
+                fieldsDiv.appendChild(document.createElement("br"));
+
+                const descLabel = document.createElement("label");
+                descLabel.textContent = `Description épisode ${e} :`;
+                fieldsDiv.appendChild(descLabel);
+
+                const episodeDescInput = document.createElement("input");
+                episodeDescInput.type = "text";
+                episodeDescInput.name = `season${seasonNum}_episode${e}_desc`;
+                episodeDescInput.required = true;
+                fieldsDiv.appendChild(episodeDescInput);
+
+                fieldsDiv.appendChild(document.createElement("br"));
+                fieldsDiv.appendChild(document.createElement("br"));
+            }
+        });
+    });
+});
+
+document.getElementById("addForm").addEventListener("submit", function (event) {
+    event.preventDefault();
+    const folder = document.getElementById("folder-add").value;
+    const title = document.getElementById("title-add").value;
+    const type = document.getElementById("type-add").value;
+    const year = document.getElementById("year-add").value;
+    const genres = document.getElementById("genres-add").value;
+    const trailer = document.getElementById("trailer-add").value;
+    const imdb = document.getElementById("imdb-add").value;
+    const note = document.getElementById("note-add").value;
+    const desc = document.getElementById("description-add").value;
+
+    let data = {
+        folder, title, type, year, genres, trailer, imdb, note, description: desc,
+    };
+
+    if (type === "film") {
+        data.directors = document.getElementById("directors-add").value;
+        data.writers = document.getElementById("writers-add").value;
+        data.stars = document.getElementById("stars-add").value;
+    } else if (type === "serie") {
+        data.directors = document.getElementById("directorsSerie-add").value;
+        data.writers = document.getElementById("writersSerie-add").value;
+        data.stars = document.getElementById("starsSerie-add").value;
+        data.seasons = [];
+        const nbSeasons = parseInt(document.getElementById("seasons-add").value, 10);
+        for (let s = 1; s &lt;= nbSeasons; s++) {
+            const season = {episodes: []};
+            const episodesCountInput = document.querySelector(`.episodesCount-add[data-season="${s}"]`);
+            if (!episodesCountInput) continue;
+            const nbEpisodes = parseInt(episodesCountInput.value, 10);
+            for (let e = 1; e &lt;= nbEpisodes; e++) {
+                const epTitle = document.querySelector(`[name="season${s}_episode${e}_title"]`)?.value || "";
+                const epDesc = document.querySelector(`[name="season${s}_episode${e}_desc"]`)?.value || "";
+                season.episodes.push({title: epTitle, description: epDesc});
+            }
+            data.seasons.push(season);
+        }
+    }
+
+    document.getElementById("addForm").remove();
+
+    let formatted = {};
+    if (type === "film") {
+        formatted[title] = {
+            title: title,
+            description: desc,
+            banner: `medias/films/${folder}/${folder}.jpg`,
+            IMDb: note ? parseFloat(note) : undefined,
+            IMDb_link: imdb ? `${imdb}` : "",
+            year: year ? parseInt(year, 10) : undefined,
+            genres: genres ? genres.split(",").map((g) => g.trim()) : [],
+            directors: data.directors ? data.directors.split(",").map((d) => d.trim()) : [],
+            writers: data.writers ? data.writers.split(",").map((w) => w.trim()) : [],
+            stars: data.stars ? data.stars.split(",").map((s) => s.trim()) : [],
+            trailer: trailer,
+            video: `medias/films/${folder}/${folder}.mp4`,
+        };
+    } else if (type === "serie") {
+        let seasonsObj = {};
+        data.seasons.forEach((season, idx) => {
+            const seasonNum = (idx + 1).toString();
+            seasonsObj[seasonNum] = season.episodes.map((ep, epIdx) => ({
+                title: ep.title, desc: ep.description, video: `medias/series/${folder}/${seasonNum}-${epIdx + 1}.mp4`,
+            }));
+        });
+        formatted[title] = {
+            title: title,
+            description: desc,
+            banner: `medias/series/${folder}/${folder}.jpg`,
+            IMDb: note ? parseFloat(note) : undefined,
+            IMDb_link: imdb ? `${imdb}/` : "",
+            year: year ? parseInt(year, 10) : undefined,
+            genres: genres ? genres.split(",").map((g) => g.trim()) : [],
+            creators: data.writers ? data.writers.split(",").map((w) => w.trim()) : [],
+            stars: data.stars ? data.stars.split(",").map((s) => s.trim()) : [],
+            trailer: trailer,
+            seasons: seasonsObj,
+        };
+    }
+
+    const jsonOutput = document.getElementById("jsonOutput-add");
+    const jsonResultDiv = document.getElementById("json-result-add");
+    if (jsonOutput) {
+        const innerJson = getInnerJsonString(formatted);
+        jsonOutput.innerHTML = syntaxHighlight(innerJson);
+        jsonOutput.style.display = "";
+        if (jsonResultDiv) {
+            jsonResultDiv.style.display = "block";
+        }
+    }
+
+    const copyBtn = document.getElementById("copyButton-add");
+    if (copyBtn &amp;&amp; jsonOutput) {
+        copyBtn.onclick = function () {
+            navigator.clipboard.writeText(jsonOutput.textContent);
+            copyBtn.textContent = "Copié !";
+            setTimeout(() => (copyBtn.textContent = "Copier le JSON"), 1500);
+        };
+    }
+});</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-add.html">add</a></li><li><a href="module-dataLoader.html">dataLoader</a></li><li><a href="module-display.html">display</a></li><li><a href="module-error.html">error</a></li><li><a href="module-filters.html">filters</a></li><li><a href="module-init.html">init</a></li><li><a href="module-modal.html">modal</a></li><li><a href="module-scripts.html">scripts</a></li><li><a href="module-search.html">search</a></li><li><a href="module-stats.html">stats</a></li><li><a href="module-storage.html">storage</a></li><li><a href="module-utils.html">utils</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.4</a> on Sat Jun 28 2025 22:15:22 GMT+0000 (Coordinated Universal Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
