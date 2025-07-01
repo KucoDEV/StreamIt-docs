@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: display.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: display.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Manages the rendering and visual presentation of film and series content.
+ *
+ * This module provides functions to display popular items, individual films and series,
+ * generate styled content cards, and handle empty result states. It also includes logic
+ * to determine the type of content item and structure the corresponding HTML output.
+ * All rendering is performed by injecting HTML into predefined container elements in the DOM.
+ *
+ * @module display
+ */
+
+/**
+ * Displays the most popular films and series based on IMDb ratings.
+ *
+ * Sorts the film and series data by descending IMDb rating, selects the top six items
+ * from each category, and renders them using the appropriate display container.
+ *
+ * @function
+ */
+function displayPopularContent() {
+    const popularFilms = Object.values(filmsData)
+        .sort((a, b) => (b.IMDb || 0) - (a.IMDb || 0))
+        .slice(0, 6);
+
+    const popularSeries = Object.values(seriesData)
+        .sort((a, b) => (b.IMDb || 0) - (a.IMDb || 0))
+        .slice(0, 6);
+
+    displayContent(popularFilms, "popularFilms");
+    displayContent(popularSeries, "popularSeries");
+}
+
+/**
+ * Displays a list of film items in the films display grid.
+ *
+ * Sorts the provided films alphabetically by title, then renders them
+ * in the DOM element with the ID "filmsGrid" using the displayContent function.
+ *
+ * @function
+ * @param {Object[]} films - An array of film objects to display.
+ */
+function displayFilms(films) {
+    const sortedFilms = films.slice().sort((a, b) => a.title.localeCompare(b.title));
+    displayContent(sortedFilms, "filmsGrid");
+}
+
+/**
+ * Displays a list of film items in the series display grid.
+ *
+ * Sorts the provided series alphabetically by title, then renders them
+ * in the DOM element with the ID "seriesGrid" using the displayContent function.
+ *
+ * @function
+ * @param {Object[]} series - An array of series objects to display.
+ */
+function displaySeries(series) {
+    const sortedSeries = series.slice().sort((a, b) => a.title.localeCompare(b.title));
+    displayContent(sortedSeries, "seriesGrid");
+}
+
+/**
+ * Displays a list of content items in the specified container.
+ *
+ * Retrieves the DOM element by its ID and populates it with content cards generated
+ * from the provided items. If the container is not found or the items array is empty,
+ * a "no results" message is displayed instead.
+ *
+ * @function
+ * @param {Object[]} items - An array of content objects to display (e.g., films or series).
+ * @param {string} containerId - The ID of the DOM element where the content should be rendered.
+ */
+function displayContent(items, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (!items || items.length === 0) {
+        container.innerHTML = '&lt;div class="no-results">&lt;i class="fas fa-film">&lt;/i>&lt;p>Aucun contenu trouvé&lt;/p>&lt;/div>';
+        return;
+    }
+
+    container.innerHTML = items.map((item) => createContentCard(item)).join("");
+}
+
+/**
+ * Creates an HTML content card for a given item (film or series).
+ *
+ * Builds a styled card element containing the item's title, banner image, genres,
+ * release year, IMDb rating, and a badge indicating whether it has been fully watched.
+ * The card includes an onclick handler to open a modal with detailed information.
+ *
+ * @function
+ * @param {Object} item - The content item to render (must include title, genres, year, IMDb rating, and optionally a banner).
+ * @returns {string} A string of HTML representing the content card.
+ */
+function createContentCard(item) {
+    const genres = item.genres ? item.genres
+        .slice(0, 3)
+        .map((g) => `&lt;span class="genre-tag">${g}&lt;/span>`)
+        .join("") : "";
+    const rating = item.IMDb ? `&lt;div class="card-rating">&lt;i class="fas fa-star">&lt;/i> ${item.IMDb}&lt;/div>` : "";
+    const year = item.year ? `&lt;span class="card-year">${item.year}&lt;/span>` : "";
+
+    let watchedBadge = "";
+    if (getItemType(item) === "film") {
+        const watchData = getFilmWatchData(item.title);
+        if (watchData.watched) {
+            watchedBadge = `&lt;span class="watched-badge" title="Déjà vu">&lt;i class="fas fa-eye">&lt;/i>&lt;/span>`;
+        }
+    } else if (getItemType(item) === "series") {
+        if (isSeriesFullyWatched(item)) {
+            watchedBadge = `&lt;span class="watched-badge" title="Série vue en entier">&lt;i class="fas fa-eye">&lt;/i>&lt;/span>`;
+        }
+    }
+
+    return `
+      &lt;div class="content-card" onclick="openModal('${escapeForHTML(item.title)}', '${getItemType(item)}')">
+        &lt;div class="card-image">
+          ${item.banner ? `&lt;img src="${item.banner}" alt="${item.title}" onerror="this.style.display='none'">` : '&lt;i class="fas fa-film">&lt;/i>'}
+          ${watchedBadge}
+        &lt;/div>
+        &lt;div class="card-content">
+          &lt;h3 class="card-title">${item.title}&lt;/h3>
+          &lt;div class="card-meta">
+            ${rating}
+            ${year}
+          &lt;/div>
+          &lt;div class="card-genres">${genres}&lt;/div>
+        &lt;/div>
+      &lt;/div>
+    `;
+}
+
+/**
+ * Determines the type of content item based on its properties.
+ *
+ * Checks whether the item has a "seasons" property to classify it as a series;
+ * otherwise, it is considered a film.
+ *
+ * @function
+ * @param {Object} item - The content item to evaluate.
+ * @returns {string} Returns "series" if the item has seasons, otherwise "film".
+ */
+function getItemType(item) {
+    return item.seasons ? "series" : "film";
+}
+
+/**
+ * Generates an HTML block displaying a "no results" message.
+ *
+ * Returns a styled HTML string containing an icon and a message, used when no content matches the user's search or filter criteria.
+ *
+ * @function
+ * @param {string} [message="Aucun résultat trouvé"] - The message to display.
+ * @returns {string} An HTML string representing the "no results" message.
+ */
+function showNoResults(message = "Aucun résultat trouvé") {
+    return `
+    &lt;div class="no-results">
+      &lt;i class="fas fa-search">&lt;/i>
+      &lt;p>${message}&lt;/p>
+    &lt;/div>
+  `;
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-add.html">add</a></li><li><a href="module-dataLoader.html">dataLoader</a></li><li><a href="module-display.html">display</a></li><li><a href="module-error.html">error</a></li><li><a href="module-filters.html">filters</a></li><li><a href="module-init.html">init</a></li><li><a href="module-modal.html">modal</a></li><li><a href="module-scripts.html">scripts</a></li><li><a href="module-search.html">search</a></li><li><a href="module-stats.html">stats</a></li><li><a href="module-storage.html">storage</a></li><li><a href="module-utils.html">utils</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.4</a> on Tue Jul 01 2025 20:12:04 GMT+0000 (Coordinated Universal Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
