@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: stats.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: stats.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * @module stats
+ * @description
+ * Calculates and displays statistics about the films and series.
+ * Shows counts, averages, popular genres, and top-rated content.
+ */
+
+/**
+ * Calculates and displays statistics for films and series datasets.
+ *
+ * Shows counts, average ratings, popular genres, unique contributors,
+ * and top-rated content in a visual format.
+ *
+ * @function
+ * @returns {void}
+ */
+function displayStats() {
+  const films = Object.values(filmsData);
+  const series = Object.values(seriesData);
+
+  const filmsCount = films.length;
+  const seriesCount = series.length;
+
+  const filmRatings = films
+    .map((f) => f.IMDb)
+    .filter((r) => typeof r === "number");
+  const avgFilmRating = filmRatings.length
+    ? (filmRatings.reduce((a, b) => a + b, 0) / filmRatings.length).toFixed(1)
+    : "0.0";
+  const seriesRatings = series
+    .map((s) => s.IMDb)
+    .filter((r) => typeof r === "number");
+  const avgSeriesRating = seriesRatings.length
+    ? (seriesRatings.reduce((a, b) => a + b, 0) / seriesRatings.length).toFixed(
+        1
+      )
+    : "0.0";
+
+  const genreCount = {};
+  films.forEach((f) =>
+    (f.genres || []).forEach((g) => (genreCount[g] = (genreCount[g] || 0) + 1))
+  );
+  series.forEach((s) =>
+    (s.genres || []).forEach((g) => (genreCount[g] = (genreCount[g] || 0) + 1))
+  );
+  const popularGenres = Object.entries(genreCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const allActors = new Set();
+  films.forEach((f) => (f.stars || []).forEach((a) => allActors.add(a)));
+  series.forEach((s) => (s.stars || []).forEach((a) => allActors.add(a)));
+  const allDirectors = new Set();
+  films.forEach((f) => (f.directors || []).forEach((d) => allDirectors.add(d)));
+  const allCreators = new Set();
+  series.forEach((s) => (s.creators || []).forEach((c) => allCreators.add(c)));
+
+  const topFilm = films.reduce(
+    (best, f) => (f.IMDb > (best?.IMDb || 0) ? f : best),
+    null
+  );
+  const topSeries = series.reduce(
+    (best, s) => (s.IMDb > (best?.IMDb || 0) ? s : best),
+    null
+  );
+
+  const totalEpisodes = series.reduce(
+    (sum, s) =>
+      sum +
+      Object.values(s.seasons || {}).reduce(
+        (acc, eps) => acc + (eps?.length || 0),
+        0
+      ),
+    0
+  );
+
+  document.getElementById("statsContent").innerHTML = `
+      &lt;div class="stats-grid">
+        &lt;div class="stat-card">
+          &lt;h4>🎬 Films&lt;/h4>
+          &lt;p>&lt;strong>${filmsCount}&lt;/strong> films&lt;/p>
+          &lt;p>Moyenne IMDb : &lt;strong>${avgFilmRating}&lt;/strong>&lt;/p>
+        &lt;/div>
+        &lt;div class="stat-card">
+          &lt;h4>📺 Séries&lt;/h4>
+          &lt;p>&lt;strong>${seriesCount}&lt;/strong> séries&lt;/p>
+          &lt;p>Moyenne IMDb : &lt;strong>${avgSeriesRating}&lt;/strong>&lt;/p>
+          &lt;p>Total épisodes : &lt;strong>${totalEpisodes}&lt;/strong>&lt;/p>
+        &lt;/div>
+        &lt;div class="stat-card">
+          &lt;h4>🔥 Genres populaires&lt;/h4>
+          &lt;ul>
+            ${popularGenres.map(([g, c]) => `&lt;li>${g} (${c})&lt;/li>`).join("")}
+          &lt;/ul>
+        &lt;/div>
+        &lt;div class="stat-card">
+          &lt;h4>👥 Acteurs&lt;/h4>
+          &lt;p>&lt;strong>${allActors.size}&lt;/strong>&lt;/p>
+        &lt;/div>
+        &lt;div class="stat-card">
+          &lt;h4>🎬 Réalisateurs&lt;/h4>
+          &lt;p>&lt;strong>${allDirectors.size}&lt;/strong>&lt;/p>
+        &lt;/div>
+        &lt;div class="stat-card">
+          &lt;h4>📝 Créateurs&lt;/h4>
+          &lt;p>&lt;strong>${allCreators.size}&lt;/strong>&lt;/p>
+        &lt;/div>
+        &lt;div class="stat-card">
+          &lt;h4>🏆 Film le mieux noté&lt;/h4>
+          &lt;p>${topFilm ? `${topFilm.title} (${topFilm.IMDb}/10)` : "N/A"}&lt;/p>
+        &lt;/div>
+        &lt;div class="stat-card">
+          &lt;h4>🏆 Série la mieux notée&lt;/h4>
+          &lt;p>${
+            topSeries ? `${topSeries.title} (${topSeries.IMDb}/10)` : "N/A"
+          }&lt;/p>
+        &lt;/div>
+      &lt;/div>
+    `;
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-add.html">add</a></li><li><a href="module-dataLoader.html">dataLoader</a></li><li><a href="module-display.html">display</a></li><li><a href="module-error.html">error</a></li><li><a href="module-filters.html">filters</a></li><li><a href="module-init.html">init</a></li><li><a href="module-modal.html">modal</a></li><li><a href="module-scripts.html">scripts</a></li><li><a href="module-search.html">search</a></li><li><a href="module-stats.html">stats</a></li><li><a href="module-storage.html">storage</a></li><li><a href="module-utils.html">utils</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Fri Oct 17 2025 19:01:30 GMT+0000 (Coordinated Universal Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
